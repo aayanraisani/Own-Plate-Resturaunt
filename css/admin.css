@@ -1,0 +1,231 @@
+body.admin {
+  animation: none;
+}
+.login {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: var(--ajrak), var(--op-indigo);
+}
+.login .form-card {
+  width: min(26rem, 100%);
+}
+
+.admin-shell {
+  display: grid;
+  grid-template-columns: 16rem 1fr;
+  min-height: 100vh;
+}
+.admin-side {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.5rem 1rem;
+  background: var(--ajrak), var(--op-indigo-dark);
+  color: #cfd4e8;
+  overflow-y: auto;
+}
+.admin-side .brand {
+  color: #fff;
+  font-size: 1.4rem;
+  padding-inline: 0.5rem;
+}
+.admin-side .brand small {
+  font-family: var(--bs-body-font-family);
+  font-size: 0.75rem;
+  color: var(--op-haldi);
+  margin-left: 0.35rem;
+}
+.admin-nav {
+  display: grid;
+  gap: 0.25rem;
+}
+.admin-nav a,
+.admin-side-foot a,
+.admin-side-foot button {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.6rem 0.75rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: none;
+  color: #cfd4e8;
+  text-decoration: none;
+  text-align: left;
+}
+.admin-nav a:hover,
+.admin-side-foot a:hover,
+.admin-side-foot button:hover {
+  background: rgb(255 255 255 / 0.08);
+  color: #fff;
+}
+.admin-nav a.active {
+  background: var(--op-haldi);
+  color: var(--op-indigo-dark);
+  font-weight: 700;
+}
+.admin-side-foot {
+  margin-top: auto;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.admin-main {
+  padding: clamp(1.25rem, 3vw, 2.5rem);
+  min-width: 0;
+}
+.admin-top {
+  margin-bottom: 1.5rem;
+}
+.stat-card {
+  height: 100%;
+  padding: 1.25rem;
+  background: var(--op-surface);
+  border: 1px solid var(--op-line);
+  border-radius: 0.75rem;
+}
+.stat-card i {
+  color: var(--op-madder);
+  font-size: 1.25rem;
+}
+.stat-card strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  color: var(--op-indigo);
+}
+.panel {
+  background: var(--op-surface);
+  border: 1px solid var(--op-line);
+  border-radius: 0.75rem;
+  padding: 0.5rem 1rem;
+}
+.panel-pad {
+  padding: 1.25rem;
+}
+.admin-table th {
+  font-size: 0.8rem;
+  color: var(--op-muted);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.admin-table td {
+  padding-block: 0.85rem;
+}
+.empty {
+  padding: 2.5rem 1rem;
+  text-align: center;
+  color: var(--op-muted);
+  margin: 0;
+}
+.admin .status {
+  width: auto;
+  min-width: 9.5rem;
+}
+
+.bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  height: 12rem;
+}
+.bar {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--op-muted);
+}
+.bar i {
+  display: block;
+  width: 100%;
+  max-width: 3rem;
+  height: var(--h);
+  min-height: 0.25rem;
+  border-radius: 0.4rem 0.4rem 0 0;
+  background: var(--op-indigo);
+  transform-origin: bottom;
+  animation: grow 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.bar:hover i {
+  background: var(--op-madder);
+}
+.rank {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  counter-reset: rank;
+}
+.rank li {
+  counter-increment: rank;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: 0.55rem;
+  border-bottom: 1px solid var(--op-line);
+}
+.rank li::before {
+  content: counter(rank);
+  color: var(--op-madder);
+  font-weight: 700;
+  margin-right: 0.75rem;
+}
+.rank li span {
+  flex: 1;
+}
+
+.message-card {
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.75rem;
+  background: var(--op-surface);
+  border: 1px solid var(--op-line);
+  border-left: 4px solid var(--op-line);
+  border-radius: 0.5rem;
+}
+.message-card.is-unread {
+  border-left-color: var(--op-madder);
+}
+.message-card header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+@keyframes grow {
+  from {
+    transform: scaleY(0);
+  }
+}
+@media (max-width: 991px) {
+  .admin-shell {
+    grid-template-columns: 1fr;
+  }
+  .admin-side {
+    position: static;
+    height: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    overflow: visible;
+  }
+  .admin-nav {
+    grid-auto-flow: column;
+    overflow-x: auto;
+    width: 100%;
+    order: 3;
+  }
+  .admin-side-foot {
+    margin: 0 0 0 auto;
+    grid-auto-flow: column;
+  }
+}
