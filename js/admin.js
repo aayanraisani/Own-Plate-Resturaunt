@@ -95,7 +95,7 @@ const readForm = (fields, form) => Object.fromEntries(fields.map((field) => {
 const table = (columns, rows, empty) => rows.length
   ? `<div class="panel"><div class="table-responsive"><table class="table align-middle admin-table mb-0">
       <thead><tr>${columns.map((c) => `<th scope="col">${c.label}</th>`).join('')}</tr></thead>
-      <tbody>${rows.map((row) => `<tr>${columns.map((c) => `<td>${c.cell(row)}</td>`).join('')}</tr>`).join('')}</tbody>
+      <tbody>${rows.map((row) => `<tr>${columns.map((c) => `<td data-label="${esc(c.label)}">${c.cell(row)}</td>`).join('')}</tr>`).join('')}</tbody>
     </table></div></div>`
   : `<p class="empty panel">${empty}</p>`;
 

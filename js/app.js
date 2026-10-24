@@ -30,7 +30,27 @@ const HERO_ITEMS = [
   ['chicken', { w: '28%', x: '6%', y: '60%', d: '1.1s', r: '-10deg', t: '5.2s' }],
 ];
 
-const Motion = globalThis.AOS ?? { init() { }, refreshHard() { } };
+const Motion = (() => {
+  let observer;
+  const reveal = ({ isIntersecting, target }) => {
+    if (!isIntersecting) return;
+    observer.unobserve(target);
+    target.classList.add('is-visible');
+    setTimeout(() => {
+      target.removeAttribute('data-aos');
+      target.classList.remove('is-visible');
+      target.style.transitionDelay = '';
+    }, 800 + Number(target.dataset.aosDelay ?? 0));
+  };
+  const scan = () => {
+    observer ??= new IntersectionObserver((entries) => entries.forEach(reveal), { rootMargin: '0px 0px -8% 0px' });
+    document.querySelectorAll('[data-aos]:not(.is-visible)').forEach((el) => {
+      el.style.transitionDelay = `${el.dataset.aosDelay ?? 0}ms`;
+      observer.observe(el);
+    });
+  };
+  return { init: scan, refreshHard: scan };
+})();
 
 const Cart = (() => {
   const key = `${NS}cart`;
@@ -130,11 +150,11 @@ const lineFrom = (item, price = item.price, options = []) =>
   ({ id: item.id, name: item.name, price, options, category: item.category, art: item.art, img: item.img });
 
 const renderLayout = () => {
-  const here = location.pathname.split('/').pop() || 'index.html';
+  const here = (location.pathname.split('/').pop() || 'index').replace(/\.html$/, '');
   const user = Auth.user();
   const { acceptingOrders, freeDeliveryOver } = Store.settings.get();
   const links = NAV.map(([href, label]) => {
-    const current = href === here;
+    const current = href.replace(/\.html$/, '') === here;
     return `<li class="nav-item"><a class="nav-link${current ? ' active' : ''}" href="${href}"${current ? ' aria-current="page"' : ''}>${label}</a></li>`;
   }).join('');
   const footerLinks = (items) => `<ul>${items.map(([href, label]) => `<li><a href="${href}">${label}</a></li>`).join('')}</ul>`;
@@ -151,8 +171,8 @@ const renderLayout = () => {
             <a class="navbar-brand brand" href="index.html">Own<span>-</span>Plate</a>
             <div class="d-flex align-items-center gap-2 ms-auto ms-lg-0 order-lg-last">
               ${user
-        ? `<a class="btn-icon" href="account.html" aria-label="My account (${esc(user.name)})"><i class="bi bi-person-check" aria-hidden="true"></i></a>`
-        : '<a class="btn btn-outline-indigo btn-sm" href="login.html">Sign in</a>'}
+                ? `<a class="btn-icon" href="account.html" aria-label="My account (${esc(user.name)})"><i class="bi bi-person-check" aria-hidden="true"></i></a>`
+                : '<a class="btn btn-outline-indigo btn-sm" href="login.html">Sign in</a>'}
               <button type="button" class="btn-icon" data-bs-toggle="offcanvas" data-bs-target="#cart" aria-label="Open your order">
                 <i class="bi bi-bag" aria-hidden="true"></i><span id="cart-count" class="cart-count">0</span>
               </button>
@@ -369,7 +389,7 @@ const bindGlobalHandlers = () => {
       $(document).trigger('favourites:change');
     })
     .on('click', '[data-copy]', async function () {
-      await navigator.clipboard?.writeText(this.dataset.copy).catch(() => { });
+      await navigator.clipboard?.writeText(this.dataset.copy).catch(() => {});
       toast(`${this.dataset.copy} copied`);
     })
     .on('click', '[data-toggle-password]', function () {
@@ -772,7 +792,7 @@ const pages = {
 $(async () => {
   await Auth.load();
   renderLayout();
-  Motion.init({ duration: 700, easing: 'ease-out-cubic', once: true, offset: 60, disable: matchMedia('(prefers-reduced-motion: reduce)').matches });
+  Motion.init();
   renderCart();
   initCounters();
   bindGlobalHandlers();
