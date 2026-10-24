@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f3ec">
+  <meta name="description" content="Place your Own-Plate order.">
+  <title>Checkout | Own-Plate</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%231f2b5e'/%3E%3Ccircle cx='50' cy='50' r='26' fill='none' stroke='%23e3a52f' stroke-width='8'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Hanken+Grotesk:wght@400;500;700&family=Noto+Nastaliq+Urdu:wght@500&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="checkout">
+<noscript><p class="p-4 text-center">Own-Plate needs JavaScript to show the menu and take orders.</p></noscript>
+<main id="main">
+<section class="section"><div class="container" id="checkout-view">
+  <h1 class="h2 mb-4">Checkout</h1>
+  <div class="row g-4">
+    <div class="col-lg-7"><form id="checkout-form" class="form-card" novalidate><div class="row g-3">
+      <div class="col-12" id="guest-note" hidden><div class="alert alert-light border mb-0">Ordering as a guest. <a href="login.html?next=checkout.html">Sign in</a> to use saved addresses and track every order.</div></div>
+      <div class="col-md-6"><label class="form-label" for="name">Full name</label>
+  <input class="form-control" id="name" name="name" type="text" autocomplete="name" required><div class="invalid-feedback">Please fill this in.</div></div>
+      <div class="col-md-6"><label class="form-label" for="phone">Mobile number</label>
+  <input class="form-control" id="phone" name="phone" type="tel" pattern="(\+92|0)3\d{2}[\- ]?\d{7}" placeholder="03XX-XXXXXXX" autocomplete="tel" required><div class="invalid-feedback">Enter a valid Pakistani mobile number.</div></div>
+      <fieldset class="col-12"><legend class="form-label fs-6">How would you like it?</legend>
+        <div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="type" id="type-delivery" value="delivery" checked><label class="form-check-label" for="type-delivery">Delivery</label></div>
+        <div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="type" id="type-pickup" value="pickup"><label class="form-check-label" for="type-pickup">Pickup</label></div></fieldset>
+      <div class="col-12" id="saved-address-group" hidden><label class="form-label" for="saved-address">Saved addresses</label><select class="form-select" id="saved-address"></select></div>
+      <div class="col-12" id="address-group"><label class="form-label" for="address">Delivery address</label><textarea class="form-control" id="address" name="address" rows="2" autocomplete="street-address"></textarea><div class="invalid-feedback">We need an address to deliver.</div></div>
+      <div class="col-12"><label class="form-label" for="notes">Notes for the kitchen (optional)</label>
+  <textarea class="form-control" id="notes" name="notes" rows="2" ></textarea><div class="invalid-feedback">Please fill this in.</div></div>
+      <div class="col-12"><label class="form-label" for="payment">Payment</label><select class="form-select" id="payment" name="payment"><option value="cash">Cash on delivery or at the counter</option><option disabled>Easypaisa / JazzCash (coming soon)</option></select></div>
+      <div class="col-12"><label class="form-label" for="coupon">Promo code</label>
+        <div class="input-group"><input class="form-control" id="coupon" autocomplete="off" placeholder="e.g. WELCOME10" style="text-transform:uppercase"><button class="btn btn-outline-indigo" type="button" id="apply-coupon">Apply</button></div>
+        <p id="coupon-message" class="small mt-1" aria-live="polite"></p></div>
+      <div class="col-12"><button id="place-order" class="btn btn-clay btn-lg w-100" type="submit">Place order</button><p id="order-note" class="small text-danger mt-2 mb-0" aria-live="polite"></p></div>
+    </div></form></div>
+    <div class="col-lg-5"><aside class="form-card summary" aria-labelledby="summary-title"><h2 id="summary-title" class="h5 mb-3">Your order</h2><div id="order-summary"></div></aside></div>
+  </div></div></section>
+</main>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/core.js"></script>
+  <script src="js/art.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
