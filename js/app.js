@@ -36,7 +36,14 @@ const Cart = (() => {
   const key = `${NS}cart`;
   let lines = [];
   try {
-    lines = JSON.parse(localStorage.getItem(key)) ?? [];
+    const saved = JSON.parse(localStorage.getItem(key));
+    lines = Array.isArray(saved) ? saved
+      .filter((line) => line && typeof line.id === 'string' && typeof line.name === 'string'
+        && Number.isFinite(line.price) && line.price >= 0 && Number.isSafeInteger(line.qty) && line.qty > 0)
+      .map((line) => {
+        const options = Array.isArray(line.options) ? line.options.filter((option) => typeof option === 'string') : [];
+        return { ...line, options, key: `${line.id}|${options.join(',')}` };
+      }) : [];
   } catch {
     lines = [];
   }
@@ -71,7 +78,10 @@ const Cart = (() => {
 const priceOrder = (lines, { type = 'delivery', coupon = null } = {}) => {
   const { deliveryFee, freeDeliveryOver } = Store.settings.get();
   const subtotal = lines.reduce((sum, l) => sum + l.qty * l.price, 0);
-  const discount = { percent: Math.round((subtotal * (coupon?.value ?? 0)) / 100), amount: Math.min(coupon?.value ?? 0, subtotal) }[coupon?.type] ?? 0;
+  const value = Math.max(0, Number(coupon?.value) || 0);
+  const discount = coupon?.type === 'percent'
+    ? Math.min(subtotal, Math.round((subtotal * Math.min(value, 100)) / 100))
+    : coupon?.type === 'amount' ? Math.min(value, subtotal) : 0;
   const charged = type === 'delivery' && subtotal > 0 && subtotal - discount < freeDeliveryOver && coupon?.type !== 'delivery';
   const fee = charged ? deliveryFee : 0;
   return { subtotal, discount, fee, total: subtotal - discount + fee };
@@ -534,7 +544,7 @@ const pages = {
         <div class="confirmation">
           <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
           <h1 class="h2 mt-3">Shukriya, ${esc(name.split(' ')[0])}!</h1>
-          <p>Order <strong>${shortId(order.id)}</strong> is with the kitchen. Pay ${money.format(order.total)} in cash when it arrives.</p>
+          <p>Order <strong>${shortId(order.id)}</strong> is with the kitchen. Pay ${money.format(order.total)} in cash ${orderType === 'pickup' ? 'at the counter when you collect it.' : 'when it arrives.'}</p>
           <div class="d-flex flex-wrap justify-content-center gap-2">
             <a class="btn btn-clay" href="track.html?id=${order.id}">Track my order</a>
             <a class="btn btn-outline-indigo" href="menu.html">Order more</a>
@@ -634,7 +644,9 @@ const pages = {
   reservations() {
     const user = Auth.user();
     if (user) prefill({ name: user.name, phone: user.phone });
-    $('[name=date]').attr('min', new Date().toLocaleDateString('en-CA'));
+    const today = new Date();
+    const minDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    $('[name=date]').attr('min', minDate);
     bindForm('#reservation-form', async (data) => {
       await Store.reservations.create({ ...data, guests: Number(data.guests), status: 'pending' });
       toast('Table request received. We will confirm by phone shortly.');
@@ -724,7 +736,8 @@ const pages = {
     };
 
     const route = async () => {
-      const name = location.hash.slice(1) in tabs ? location.hash.slice(1) : 'overview';
+        const tab = location.hash.slice(1);
+        const name = Object.hasOwn(tabs, tab) ? tab : 'overview';
       $('.account-nav a').each((_, el) => $(el).toggleClass('active', el.hash === `#${name}`).attr('aria-current', el.hash === `#${name}` ? 'page' : null));
       $('#account-view').html(await tabs[name]());
       Motion.refreshHard();

@@ -245,7 +245,8 @@ const views = {
 };
 
 const route = async () => {
-  const name = location.hash.slice(1) in views ? location.hash.slice(1) : 'dashboard';
+  const view = location.hash.slice(1);
+  const name = Object.hasOwn(views, view) ? view : 'dashboard';
   $('.admin-nav a').each((_, el) => $(el).toggleClass('active', el.hash === `#${name}`).attr('aria-current', el.hash === `#${name}` ? 'page' : null));
   $('#view-title').text($(`.admin-nav a[href="#${name}"]`).text().trim());
   try {

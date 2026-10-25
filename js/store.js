@@ -12,7 +12,13 @@ const Store = (() => {
   const collection = (name, seed = []) => {
     const all = () => {
       const rows = read(name);
-      if (rows) return rows;
+      if (Array.isArray(rows)) {
+        const valid = rows.filter((row) => row && typeof row === 'object' && !Array.isArray(row));
+        if (valid.length === rows.length) return valid;
+        const recovered = valid.length ? valid : rows.length ? seed : valid;
+        write(name, recovered);
+        return recovered;
+      }
       write(name, seed);
       return seed;
     };
@@ -39,8 +45,11 @@ const Store = (() => {
     messages: collection('messages'),
     users: collection('users'),
     settings: {
-      get: () => ({ ...SETTINGS, ...read('settings') }),
-      save: (patch) => write('settings', { ...read('settings'), ...patch }),
+      get: () => {
+        const saved = read('settings');
+        return { ...SETTINGS, ...(saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {}) };
+      },
+      save: (patch) => write('settings', { ...Store.settings.get(), ...patch }),
     },
   };
 })();
