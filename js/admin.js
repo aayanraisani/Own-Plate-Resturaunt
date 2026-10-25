@@ -250,6 +250,7 @@ const route = async () => {
   $('#view-title').text($(`.admin-nav a[href="#${name}"]`).text().trim());
   try {
     $view.html(await views[name]());
+    loadUrduFont();
   } catch (error) {
     console.error(error);
     $view.html('<p class="empty panel">This section failed to load. Refresh and try again.</p>');

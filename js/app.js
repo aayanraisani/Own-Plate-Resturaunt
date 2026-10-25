@@ -400,7 +400,9 @@ const bindGlobalHandlers = () => {
     })
     .on('cart:change', renderCart);
 
-  $(window).on('scroll', () => $('.site-header').toggleClass('is-scrolled', window.scrollY > 8)).trigger('scroll');
+  const syncHeader = () => $('.site-header').toggleClass('is-scrolled', window.scrollY > 8);
+  $(window).on('scroll', syncHeader);
+  requestAnimationFrame(() => requestAnimationFrame(syncHeader));
   $('#primary-nav .nav-link').on('click', () => $('#primary-nav').collapse('hide'));
 };
 
@@ -456,6 +458,7 @@ const pages = {
           : grid(shown));
       $('#menu-filters .filter-pill').each((_, el) => $(el).attr('aria-pressed', el.dataset.category === state.category));
       Motion.refreshHard();
+      if (document.readyState === 'complete') loadUrduFont();
     };
 
     $('#menu-filters')
@@ -804,4 +807,8 @@ $(async () => {
     console.error(error);
     toast('We could not load this page properly. Please refresh.');
   }
+
+  const later = () => setTimeout(loadUrduFont, 300);
+  if (document.readyState === 'complete') later();
+  else window.addEventListener('load', later, { once: true });
 });
