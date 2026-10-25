@@ -28,14 +28,3 @@ const toast = (message) => {
   $toast.on('hidden.bs.toast', () => $toast.remove());
   new bootstrap.Toast($toast[0], { delay: 2800 }).show();
 };
-
-const loadUrduFont = (() => {
-  let loaded = false;
-  return () => {
-    if (loaded || !document.querySelector('.urdu')) return;
-    loaded = true;
-    $('<link rel="stylesheet">')
-      .attr('href', 'https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@500&display=swap')
-      .appendTo('head');
-  };
-})();
