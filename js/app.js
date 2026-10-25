@@ -30,20 +30,33 @@ const HERO_ITEMS = [
   ['chicken', { w: '28%', x: '6%', y: '60%', d: '1.1s', r: '-10deg', t: '5.2s' }],
 ];
 
-const Motion = globalThis.AOS ?? { init() { }, refreshHard() { } };
+const Motion = (() => {
+  let observer;
+  const reveal = ({ isIntersecting, target }) => {
+    if (!isIntersecting) return;
+    observer.unobserve(target);
+    target.classList.add('is-visible');
+    setTimeout(() => {
+      target.removeAttribute('data-aos');
+      target.classList.remove('is-visible');
+      target.style.transitionDelay = '';
+    }, 800 + Number(target.dataset.aosDelay ?? 0));
+  };
+  const scan = () => {
+    observer ??= new IntersectionObserver((entries) => entries.forEach(reveal), { rootMargin: '0px 0px -8% 0px' });
+    document.querySelectorAll('[data-aos]:not(.is-visible)').forEach((el) => {
+      el.style.transitionDelay = `${el.dataset.aosDelay ?? 0}ms`;
+      observer.observe(el);
+    });
+  };
+  return { init: scan, refreshHard: scan };
+})();
 
 const Cart = (() => {
   const key = `${NS}cart`;
   let lines = [];
   try {
-    const saved = JSON.parse(localStorage.getItem(key));
-    lines = Array.isArray(saved) ? saved
-      .filter((line) => line && typeof line.id === 'string' && typeof line.name === 'string'
-        && Number.isFinite(line.price) && line.price >= 0 && Number.isSafeInteger(line.qty) && line.qty > 0)
-      .map((line) => {
-        const options = Array.isArray(line.options) ? line.options.filter((option) => typeof option === 'string') : [];
-        return { ...line, options, key: `${line.id}|${options.join(',')}` };
-      }) : [];
+    lines = JSON.parse(localStorage.getItem(key)) ?? [];
   } catch {
     lines = [];
   }
@@ -78,10 +91,7 @@ const Cart = (() => {
 const priceOrder = (lines, { type = 'delivery', coupon = null } = {}) => {
   const { deliveryFee, freeDeliveryOver } = Store.settings.get();
   const subtotal = lines.reduce((sum, l) => sum + l.qty * l.price, 0);
-  const value = Math.max(0, Number(coupon?.value) || 0);
-  const discount = coupon?.type === 'percent'
-    ? Math.min(subtotal, Math.round((subtotal * Math.min(value, 100)) / 100))
-    : coupon?.type === 'amount' ? Math.min(value, subtotal) : 0;
+  const discount = { percent: Math.round((subtotal * (coupon?.value ?? 0)) / 100), amount: Math.min(coupon?.value ?? 0, subtotal) }[coupon?.type] ?? 0;
   const charged = type === 'delivery' && subtotal > 0 && subtotal - discount < freeDeliveryOver && coupon?.type !== 'delivery';
   const fee = charged ? deliveryFee : 0;
   return { subtotal, discount, fee, total: subtotal - discount + fee };
@@ -144,7 +154,7 @@ const renderLayout = () => {
   const user = Auth.user();
   const { acceptingOrders, freeDeliveryOver } = Store.settings.get();
   const links = NAV.map(([href, label]) => {
-        const current = href.replace(/\.html$/, '') === here;
+    const current = href.replace(/\.html$/, '') === here;
     return `<li class="nav-item"><a class="nav-link${current ? ' active' : ''}" href="${href}"${current ? ' aria-current="page"' : ''}>${label}</a></li>`;
   }).join('');
   const footerLinks = (items) => `<ul>${items.map(([href, label]) => `<li><a href="${href}">${label}</a></li>`).join('')}</ul>`;
@@ -161,8 +171,8 @@ const renderLayout = () => {
             <a class="navbar-brand brand" href="index.html">Own<span>-</span>Plate</a>
             <div class="d-flex align-items-center gap-2 ms-auto ms-lg-0 order-lg-last">
               ${user
-        ? `<a class="btn-icon" href="account.html" aria-label="My account (${esc(user.name)})"><i class="bi bi-person-check" aria-hidden="true"></i></a>`
-        : '<a class="btn btn-outline-indigo btn-sm" href="login.html">Sign in</a>'}
+                ? `<a class="btn-icon" href="account.html" aria-label="My account (${esc(user.name)})"><i class="bi bi-person-check" aria-hidden="true"></i></a>`
+                : '<a class="btn btn-outline-indigo btn-sm" href="login.html">Sign in</a>'}
               <button type="button" class="btn-icon" data-bs-toggle="offcanvas" data-bs-target="#cart" aria-label="Open your order">
                 <i class="bi bi-bag" aria-hidden="true"></i><span id="cart-count" class="cart-count">0</span>
               </button>
@@ -379,7 +389,7 @@ const bindGlobalHandlers = () => {
       $(document).trigger('favourites:change');
     })
     .on('click', '[data-copy]', async function () {
-      await navigator.clipboard?.writeText(this.dataset.copy).catch(() => { });
+      await navigator.clipboard?.writeText(this.dataset.copy).catch(() => {});
       toast(`${this.dataset.copy} copied`);
     })
     .on('click', '[data-toggle-password]', function () {
@@ -390,7 +400,9 @@ const bindGlobalHandlers = () => {
     })
     .on('cart:change', renderCart);
 
-  $(window).on('scroll', () => $('.site-header').toggleClass('is-scrolled', window.scrollY > 8)).trigger('scroll');
+  const syncHeader = () => $('.site-header').toggleClass('is-scrolled', window.scrollY > 8);
+  $(window).on('scroll', syncHeader);
+  requestAnimationFrame(() => requestAnimationFrame(syncHeader));
   $('#primary-nav .nav-link').on('click', () => $('#primary-nav').collapse('hide'));
 };
 
@@ -446,6 +458,7 @@ const pages = {
           : grid(shown));
       $('#menu-filters .filter-pill').each((_, el) => $(el).attr('aria-pressed', el.dataset.category === state.category));
       Motion.refreshHard();
+      if (document.readyState === 'complete') loadUrduFont();
     };
 
     $('#menu-filters')
@@ -544,7 +557,7 @@ const pages = {
         <div class="confirmation">
           <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
           <h1 class="h2 mt-3">Shukriya, ${esc(name.split(' ')[0])}!</h1>
-          <p>Order <strong>${shortId(order.id)}</strong> is with the kitchen. Pay ${money.format(order.total)} in cash ${orderType === 'pickup' ? 'at the counter when you collect it.' : 'when it arrives.'}</p>
+          <p>Order <strong>${shortId(order.id)}</strong> is with the kitchen. Pay ${money.format(order.total)} in cash when it arrives.</p>
           <div class="d-flex flex-wrap justify-content-center gap-2">
             <a class="btn btn-clay" href="track.html?id=${order.id}">Track my order</a>
             <a class="btn btn-outline-indigo" href="menu.html">Order more</a>
@@ -644,9 +657,7 @@ const pages = {
   reservations() {
     const user = Auth.user();
     if (user) prefill({ name: user.name, phone: user.phone });
-    const today = new Date();
-    const minDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    $('[name=date]').attr('min', minDate);
+    $('[name=date]').attr('min', new Date().toLocaleDateString('en-CA'));
     bindForm('#reservation-form', async (data) => {
       await Store.reservations.create({ ...data, guests: Number(data.guests), status: 'pending' });
       toast('Table request received. We will confirm by phone shortly.');
@@ -736,8 +747,7 @@ const pages = {
     };
 
     const route = async () => {
-        const tab = location.hash.slice(1);
-        const name = Object.hasOwn(tabs, tab) ? tab : 'overview';
+      const name = location.hash.slice(1) in tabs ? location.hash.slice(1) : 'overview';
       $('.account-nav a').each((_, el) => $(el).toggleClass('active', el.hash === `#${name}`).attr('aria-current', el.hash === `#${name}` ? 'page' : null));
       $('#account-view').html(await tabs[name]());
       Motion.refreshHard();
@@ -785,7 +795,7 @@ const pages = {
 $(async () => {
   await Auth.load();
   renderLayout();
-  Motion.init({ duration: 700, easing: 'ease-out-cubic', once: true, offset: 60, disable: matchMedia('(prefers-reduced-motion: reduce)').matches });
+  Motion.init();
   renderCart();
   initCounters();
   bindGlobalHandlers();
@@ -797,4 +807,8 @@ $(async () => {
     console.error(error);
     toast('We could not load this page properly. Please refresh.');
   }
+
+  const later = () => setTimeout(loadUrduFont, 300);
+  if (document.readyState === 'complete') later();
+  else window.addEventListener('load', later, { once: true });
 });

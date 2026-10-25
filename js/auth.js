@@ -10,12 +10,8 @@ const Auth = (() => {
   };
   const start = (record) => {
     localStorage.setItem(SESSION, record.id);
-    user = {
-      ...record,
-      addresses: Array.isArray(record.addresses) ? record.addresses : [],
-      favourites: Array.isArray(record.favourites) ? record.favourites : [],
-    };
-    return user;
+    user = record;
+    return record;
   };
   const normalise = (email) => email.trim().toLowerCase();
 
@@ -24,12 +20,7 @@ const Auth = (() => {
 
     async load() {
       const id = localStorage.getItem(SESSION);
-      const record = id ? await Store.users.get(id) : null;
-      user = record ? {
-        ...record,
-        addresses: Array.isArray(record.addresses) ? record.addresses : [],
-        favourites: Array.isArray(record.favourites) ? record.favourites : [],
-      } : null;
+      user = id ? (await Store.users.get(id)) ?? null : null;
       return user;
     },
 

@@ -95,7 +95,7 @@ const readForm = (fields, form) => Object.fromEntries(fields.map((field) => {
 const table = (columns, rows, empty) => rows.length
   ? `<div class="panel"><div class="table-responsive"><table class="table align-middle admin-table mb-0">
       <thead><tr>${columns.map((c) => `<th scope="col">${c.label}</th>`).join('')}</tr></thead>
-      <tbody>${rows.map((row) => `<tr>${columns.map((c) => `<td>${c.cell(row)}</td>`).join('')}</tr>`).join('')}</tbody>
+      <tbody>${rows.map((row) => `<tr>${columns.map((c) => `<td data-label="${esc(c.label)}">${c.cell(row)}</td>`).join('')}</tr>`).join('')}</tbody>
     </table></div></div>`
   : `<p class="empty panel">${empty}</p>`;
 
@@ -245,12 +245,12 @@ const views = {
 };
 
 const route = async () => {
-  const view = location.hash.slice(1);
-  const name = Object.hasOwn(views, view) ? view : 'dashboard';
+  const name = location.hash.slice(1) in views ? location.hash.slice(1) : 'dashboard';
   $('.admin-nav a').each((_, el) => $(el).toggleClass('active', el.hash === `#${name}`).attr('aria-current', el.hash === `#${name}` ? 'page' : null));
   $('#view-title').text($(`.admin-nav a[href="#${name}"]`).text().trim());
   try {
     $view.html(await views[name]());
+    loadUrduFont();
   } catch (error) {
     console.error(error);
     $view.html('<p class="empty panel">This section failed to load. Refresh and try again.</p>');
