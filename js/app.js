@@ -22,13 +22,13 @@ const FLOW = {
   ],
 };
 
-const HERO_ITEMS = [
-  ['burger', { w: '50%', x: '25%', y: '30%', d: '.3s', r: '0deg', t: '5s' }],
-  ['pizza', { w: '34%', x: '4%', y: '6%', d: '.5s', r: '-14deg', t: '6s' }],
-  ['fries', { w: '30%', x: '64%', y: '6%', d: '.7s', r: '10deg', t: '5.5s' }],
-  ['cup', { w: '24%', x: '68%', y: '60%', d: '.9s', r: '8deg', t: '6.5s' }],
-  ['chicken', { w: '28%', x: '6%', y: '60%', d: '1.1s', r: '-10deg', t: '5.2s' }],
+const HERO_FLOATS = [
+  ['hero-pizza', { w: '34%', x: '2%', y: '8%', d: '.5s', t: '6s' }],
+  ['hero-chicken', { w: '32%', x: '66%', y: '4%', d: '.7s', t: '5.5s' }],
+  ['hero-fries', { w: '30%', x: '62%', y: '62%', d: '.9s', t: '6.5s' }],
 ];
+
+const SOCIAL = [['facebook', 'bi-facebook', 'Facebook'], ['instagram', 'bi-instagram', 'Instagram'], ['tiktok', 'bi-tiktok', 'TikTok'], ['whatsapp', 'bi-whatsapp', 'WhatsApp']];
 
 const Motion = (() => {
   let observer;
@@ -81,6 +81,10 @@ const Cart = (() => {
       lines = qty > 0 ? lines.map((l) => (l.key === lineKey ? { ...l, qty } : l)) : lines.filter((l) => l.key !== lineKey);
       commit();
     },
+    replace(next) {
+      lines = next;
+      commit();
+    },
     clear() {
       lines = [];
       commit();
@@ -108,6 +112,23 @@ const canOrder = () => {
   if (Store.settings.get().acceptingOrders) return true;
   toast('Online ordering is paused right now. Please check back soon.');
   return false;
+};
+
+const syncCart = async () => {
+  const [menu, deals] = await Promise.all([Store.menu.list(), Store.deals.list()]);
+  const current = Cart.lines();
+  const fresh = current.flatMap((line) => {
+    const deal = deals.find((d) => d.id === line.id && d.active);
+    if (deal) return [{ ...line, price: deal.price, img: deal.img }];
+    const item = menu.find((m) => m.id === line.id && m.available);
+    if (!item) return [];
+    const choices = (OPTION_SETS[item.optionSet] ?? []).flatMap((g) => g.choices);
+    const extra = line.options.reduce((sum, label) => sum + (choices.find((c) => c.label === label)?.price ?? 0), 0);
+    return [{ ...line, price: item.price + extra, img: item.img }];
+  });
+  if (JSON.stringify(fresh) === JSON.stringify(current)) return;
+  Cart.replace(fresh);
+  if (fresh.length < current.length) toast('Some items are no longer available and were removed from your order.');
 };
 
 const nextUrl = () => {
@@ -147,12 +168,13 @@ const passwordInput = (name, label, autocomplete) => `
   </div>`;
 
 const lineFrom = (item, price = item.price, options = []) =>
-  ({ id: item.id, name: item.name, price, options, category: item.category, art: item.art, img: item.img });
+  ({ id: item.id, name: item.name, price, options, category: item.category, img: item.img });
 
 const renderLayout = () => {
   const here = (location.pathname.split('/').pop() || 'index').replace(/\.html$/, '');
   const user = Auth.user();
-  const { acceptingOrders, freeDeliveryOver } = Store.settings.get();
+  const settings = Store.settings.get();
+  const { acceptingOrders, freeDeliveryOver } = settings;
   const links = NAV.map(([href, label]) => {
     const current = href.replace(/\.html$/, '') === here;
     return `<li class="nav-item"><a class="nav-link${current ? ' active' : ''}" href="${href}"${current ? ' aria-current="page"' : ''}>${label}</a></li>`;
@@ -205,12 +227,12 @@ const renderLayout = () => {
             <div class="col-lg-4">
               <a class="brand fs-3" href="index.html">Own<span>-</span>Plate</a>
               <p class="mt-2">Burgers, pizza and desi favourites, cooked to order and sold direct. Halal, always.</p>
-              <div class="social"><a href="#" aria-label="Facebook"><i class="bi bi-facebook"></i></a><a href="#" aria-label="Instagram"><i class="bi bi-instagram"></i></a><a href="#" aria-label="TikTok"><i class="bi bi-tiktok"></i></a><a href="#" aria-label="WhatsApp"><i class="bi bi-whatsapp"></i></a></div>
+              <div class="social">${SOCIAL.filter(([key]) => settings.social?.[key]).map(([key, icon, label]) => `<a href="${esc(settings.social[key])}" target="_blank" rel="noopener" aria-label="${label}"><i class="bi ${icon}"></i></a>`).join('')}</div>
             </div>
             <div class="col-6 col-lg-2"><h2>Menu</h2>${footerLinks(CATEGORIES.slice(1, 7).map((c) => [`menu.html#${c.id}`, c.label]))}</div>
             <div class="col-6 col-lg-2"><h2>Company</h2>${footerLinks([['about.html', 'Our story'], ['locations.html', 'Locations'], ['contact.html', 'Contact'], ['faq.html', 'FAQ']])}</div>
             <div class="col-6 col-lg-2"><h2>Account</h2>${footerLinks([['login.html', 'Sign in'], ['signup.html', 'Create account'], ['track.html', 'Track order'], ['terms.html', 'Terms'], ['privacy.html', 'Privacy']])}</div>
-            <div class="col-6 col-lg-2"><h2>Say hello</h2><ul><li><a data-tel data-setting="phone"></a></li><li><a data-mail data-setting="email"></a></li><li data-setting="hours"></li></ul></div>
+            <div class="col-6 col-lg-2 footer-contact"><h2>Say hello</h2><ul><li><a data-tel data-setting="phone"></a></li><li><a data-mail data-setting="email"></a></li><li data-setting="hours"></li></ul></div>
           </div>
           <hr class="border-light opacity-25 my-4">
           <div class="d-flex flex-wrap justify-content-between gap-2 small">
@@ -220,10 +242,14 @@ const renderLayout = () => {
         </div>
       </footer>`);
   $('#year').text(new Date().getFullYear());
-  const settings = Store.settings.get();
-  $('[data-setting]').each((_, el) => { el.textContent = settings[el.dataset.setting]; });
+  $('[data-setting]').each((_, el) => {
+    const value = settings[el.dataset.setting];
+    el.textContent = value;
+    $(el).closest('li').prop('hidden', !value);
+  });
   $('[data-tel]').attr('href', `tel:${settings.phone.replace(/\s/g, '')}`);
   $('[data-mail]').attr('href', `mailto:${settings.email}`);
+  $('.footer-contact').prop('hidden', !settings.phone && !settings.email && !settings.hours);
 };
 
 const renderCart = () => {
@@ -236,7 +262,7 @@ const renderCart = () => {
   $('#cart-lines').html(lines.length
     ? lines.map((l) => `
         <li class="cart-line">
-          ${artFigure(l, 'cart-thumb')}
+          ${figure(l, 'cart-thumb', 160)}
           <div class="grow">
             <div class="fw-bold text-truncate">${esc(l.name)}</div>
             ${l.options.length ? `<small class="text-muted d-block text-truncate">${esc(l.options.join(', '))}</small>` : ''}
@@ -257,16 +283,16 @@ const dishCard = (item, index = 0) => {
   return `
     <div class="col-6 col-lg-4 col-xl-3" data-aos="fade-up" data-aos-delay="${(index % 4) * 70}">
       <article class="dish${item.available ? '' : ' is-sold-out'}">
-        ${artFigure(item)}
+        ${figure(item)}
         <div class="dish-tags">${item.tags.slice(0, 2).map((tag) => `<span class="tag">${esc(tag)}</span>`).join('')}</div>
-        <button type="button" class="fav${saved ? ' is-on' : ''}" data-fav="${item.id}" aria-pressed="${saved}" aria-label="Save ${esc(item.name)} to favourites"><i class="bi bi-heart${saved ? '-fill' : ''}" aria-hidden="true"></i></button>
+        <button type="button" class="fav${saved ? ' is-on' : ''}" data-fav="${esc(item.id)}" aria-pressed="${saved}" aria-label="Save ${esc(item.name)} to favourites"><i class="bi bi-heart${saved ? '-fill' : ''}" aria-hidden="true"></i></button>
         <div class="dish-body">
-          <button type="button" class="dish-link" data-open="${item.id}">${esc(item.name)}</button>
+          <button type="button" class="dish-link" data-open="${esc(item.id)}">${esc(item.name)}</button>
           ${item.urdu ? `<span class="urdu small" lang="ur" dir="rtl">${esc(item.urdu)}</span>` : ''}
           <p>${esc(item.desc)}</p>
           <div class="dish-foot">
             <span><span class="price">${money.format(item.price)}</span><span class="kcal">${item.kcal} kcal</span></span>
-            <button type="button" class="btn btn-clay btn-sm" ${customisable ? 'data-open' : 'data-add'}="${item.id}" ${item.available ? '' : 'disabled'}>${!item.available ? 'Sold out' : customisable ? 'Customise' : 'Add'}</button>
+            <button type="button" class="btn btn-clay btn-sm" ${customisable ? 'data-open' : 'data-add'}="${esc(item.id)}" ${item.available ? '' : 'disabled'}>${!item.available ? 'Sold out' : customisable ? 'Customise' : 'Add'}</button>
           </div>
         </div>
       </article>
@@ -276,7 +302,7 @@ const dishCard = (item, index = 0) => {
 const dealCard = (deal) => `
   <article class="deal">
     ${deal.was > deal.price ? `<span class="deal-badge">Save ${Math.round((1 - deal.price / deal.was) * 100)}%</span>` : ''}
-    ${artFigure(deal)}
+    ${figure(deal)}
     <div class="dish-body">
       <h3 class="h5 mb-1">${esc(deal.name)}</h3>
       <p>${esc(deal.desc)}</p>
@@ -318,7 +344,7 @@ const openItem = async (id) => {
       <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
     </div>
     <div class="modal-body">
-      ${artFigure(item, 'dish-art dish-art-lg')}
+      ${figure(item, 'dish-art dish-art-lg', 1000)}
       <p class="text-muted mt-3 mb-1">${esc(item.desc)}</p>
       <p class="small text-muted">${item.kcal} kcal${item.tags.length ? ` &middot; ${esc(item.tags.join(', '))}` : ''}</p>
       <form id="item-form">${itemState.groups.map(optionGroup).join('')}</form>
@@ -336,19 +362,6 @@ const confirmAdd = (message) => {
   $('#cart-count')[0]?.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.5)' }, { transform: 'scale(1)' }], { duration: 300 });
 };
 
-const initCounters = () => {
-  const observer = new IntersectionObserver((entries, obs) => {
-    entries.filter((e) => e.isIntersecting).forEach(({ target }) => {
-      obs.unobserve(target);
-      $({ n: 0 }).animate({ n: Number(target.dataset.count) }, {
-        duration: 1600,
-        step: (n) => { target.textContent = Math.floor(n).toLocaleString('en-PK'); },
-      });
-    });
-  }, { threshold: 0.6 });
-  $('[data-count]').each((_, el) => observer.observe(el));
-};
-
 const bindGlobalHandlers = () => {
   $(document)
     .on('click', '[data-open]', function () { openItem(this.dataset.open); })
@@ -363,7 +376,7 @@ const bindGlobalHandlers = () => {
       if (!canOrder()) return;
       const deal = (await Store.deals.list()).find((d) => d.id === this.dataset.addDeal);
       if (!deal) return;
-      Cart.add({ id: deal.id, name: deal.name, price: deal.price, art: deal.art, tint: deal.tint });
+      Cart.add({ id: deal.id, name: deal.name, price: deal.price, img: deal.img });
       confirmAdd(`${deal.name} added to your order`);
     })
     .on('click', '[data-qty]', function () {
@@ -425,10 +438,14 @@ const orderCard = (order) => `
 const pages = {
   async home() {
     const [menu, deals] = await Promise.all([Store.menu.list(), Store.deals.list()]);
-    $('#hero-stage').html(HERO_ITEMS.map(([name, v]) =>
-      `<div class="float" style="--w:${v.w};--x:${v.x};--y:${v.y};--d:${v.d};--r:${v.r};--t:${v.t}">${ART[name]}</div>`).join(''));
-    $('#category-tiles').html(CATEGORIES.slice(1).map((c, i) =>
-      `<a class="tile" href="menu.html#${c.id}" style="--tint:${c.tint}" data-aos="zoom-in" data-aos-delay="${i * 50}">${ART[c.art]}<span>${c.label}</span></a>`).join(''));
+    $('#hero-stage').html(`
+      <img class="hero-photo" src="${sized(photo('hero-main'), 900)}" alt="" fetchpriority="high">
+      ${HERO_FLOATS.map(([key, v]) => `<img class="float" src="${sized(photo(key), 320)}" alt="" style="--w:${v.w};--x:${v.x};--y:${v.y};--d:${v.d};--t:${v.t}">`).join('')}`);
+    $('#category-tiles').html(CATEGORIES.slice(1).map((c, i) => `
+      <a class="tile" href="menu.html#${c.id}" data-aos="zoom-in" data-aos-delay="${i * 50}">
+        ${c.photo ? `<img src="${esc(sized(photo(c.photo), 400))}" alt="" loading="lazy" onerror="this.remove()">` : `<i class="bi ${c.icon}" aria-hidden="true"></i>`}
+        <span>${c.label}</span>
+      </a>`).join(''));
     $('#deal-row').html(deals.filter((d) => d.active).map(dealCard).join(''));
     $('#featured-grid').html(menu.filter((i) => i.featured && i.available).slice(0, 8).map(dishCard).join(''));
     Motion.refreshHard();
@@ -468,6 +485,12 @@ const pages = {
         history.replaceState(null, '', `#${state.category}`);
         render();
       });
+    $(window).on('hashchange', () => {
+      const next = location.hash.slice(1);
+      if (!CATEGORIES.some((c) => c.id === next)) return;
+      state.category = next;
+      render();
+    });
     $('#menu-search').on('input', function () { state.query = this.value; render(); });
     $('#menu-sort').on('change', function () { state.sort = this.value; render(); });
     render();
@@ -481,6 +504,23 @@ const pages = {
         <div class="coupon d-flex flex-column gap-2"><code>${esc(c.code)}</code><span>${esc(c.desc)}</span>
           <button type="button" class="btn btn-outline-indigo btn-sm align-self-start" data-copy="${esc(c.code)}">Copy code</button></div>
       </div>`).join(''));
+    Motion.refreshHard();
+  },
+
+  locations() {
+    const { address, hours, phone } = Store.settings.get();
+    const branches = BRANCHES.length ? BRANCHES : address ? [{ name: 'Our kitchen', address, hours, phone }] : [];
+    const rows = (b) => [['bi-geo-alt', b.address], ['bi-clock', b.hours ?? hours], ['bi-telephone', b.phone ?? phone]].filter(([, text]) => text);
+    $('#branch-grid').html(branches.length
+      ? branches.map((b, i) => `
+        <div class="col-md-4" data-aos="fade-up" data-aos-delay="${i * 100}">
+          <article class="form-card branch h-100">
+            <h2 class="h4">${esc(b.name)}</h2>
+            <ul class="info-list mt-3">${rows(b).map(([icon, text]) => `<li><i class="bi ${icon}" aria-hidden="true"></i>${esc(text)}</li>`).join('')}</ul>
+            ${b.address ? `<a class="btn btn-outline-indigo btn-sm mt-3" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${b.name} ${b.address}`)}" target="_blank" rel="noopener">Get directions</a>` : ''}
+          </article>
+        </div>`).join('')
+      : '<p class="text-muted">No branch details have been added yet.</p>');
     Motion.refreshHard();
   },
 
@@ -650,10 +690,6 @@ const pages = {
     }, { reset: false });
   },
 
-  forgot() {
-    bindForm('#forgot-form', () => $('#forgot-note').prop('hidden', false));
-  },
-
   reservations() {
     const user = Auth.user();
     if (user) prefill({ name: user.name, phone: user.phone });
@@ -760,6 +796,7 @@ const pages = {
         if (!canOrder()) return;
         const order = await Store.orders.get(this.dataset.reorder);
         order.items.forEach((line) => Cart.add(line, line.qty));
+        await syncCart();
         bootstrap.Offcanvas.getOrCreateInstance('#cart').show();
       })
       .on('click', '[data-remove-address]', async function () {
@@ -797,9 +834,8 @@ $(async () => {
   renderLayout();
   Motion.init();
   renderCart();
-  initCounters();
   bindGlobalHandlers();
-  $('[data-art]').each((_, el) => $(el).html(ART[el.dataset.art]));
+  await syncCart();
 
   try {
     await pages[document.body.dataset.page]?.();

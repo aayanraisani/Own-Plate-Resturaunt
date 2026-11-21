@@ -8,21 +8,22 @@ Serve the folder over localhost or https (accounts use the Web Crypto API):
     npx serve .        # or VS Code Live Server
 
 Public site: `index.html` · Admin: `admin/index.html`
-Demo admin login: `admin@own-plate.pk` / `ownplate2026` (client-side placeholder, replaced by real auth in the backend).
+
+The first visit to the admin page asks you to create a staff account (stored hashed in that browser only). Real server-side authentication arrives with the backend.
 
 ## Structure
     *.html            public pages (home, menu, deals, locations, about, reserve, contact, faq,
                       track, checkout, login, signup, forgot, account, terms, privacy, 404)
     admin/            dashboard, orders, menu, deals, promo codes, reservations, messages, customers, settings
     css/styles.css    design tokens, components, animation
-    js/data.js        seed menu, deals, coupons, option sets, settings
-    js/art.js         built-in dish illustrations
+    js/data.js        business settings, menu, deals, promo codes, option sets, Unsplash photo ids
     js/store.js       data layer (localStorage now; swap internals for fetch() calls when the API exists)
     js/auth.js        accounts and sessions (placeholder until server-side auth)
     js/app.js         public site behaviour
 
-## Photos
-Dishes use built-in illustrations. To use a real photo, paste any image link into Admin > Menu > edit dish > Photo link.
-
 ## Before launch
-Replace the placeholder address, phone, email, branches and legal text. Update the storage namespace (`NS` in js/core.js) if you change seed data.
+- Fill in `SETTINGS` in `js/data.js`: `phone`, `email`, `address`, `hours` and the `social` links. Empty values are hidden on the site. Add extra branches to `BRANCHES`.
+- Dish photos are Unsplash images referenced by id in `PHOTOS` (`js/data.js`). Dishes without an entry show a plain tinted block until a photo is added there or in Admin > Menu > Photo link.
+- Bump the storage namespace (`NS` in `js/core.js`) whenever you change seed data, otherwise returning visitors keep the old menu.
+- Review the Terms and Privacy pages with the restaurant owner. They are generic.
+- Orders, accounts and admin changes live in each visitor's own browser until the backend exists.

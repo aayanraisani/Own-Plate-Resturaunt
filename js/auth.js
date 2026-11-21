@@ -2,12 +2,6 @@ const Auth = (() => {
   const SESSION = `${NS}session`;
   let user = null;
 
-  const digest = async (password, salt) => {
-    if (!globalThis.crypto?.subtle) throw new AppError('Accounts need a secure page. Open the site on localhost or https.');
-    const bytes = new TextEncoder().encode(`${salt}:${password}`);
-    const hash = await crypto.subtle.digest('SHA-256', bytes);
-    return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, '0')).join('');
-  };
   const start = (record) => {
     localStorage.setItem(SESSION, record.id);
     user = record;
@@ -29,15 +23,15 @@ const Auth = (() => {
       if ((await Store.users.list()).some((u) => u.email === mail)) {
         throw new AppError('An account with this email already exists. Try signing in.');
       }
-      const salt = crypto.randomUUID();
+      const salt = crypto.randomUUID?.();
       return start(await Store.users.create({
-        name: name.trim(), email: mail, phone, salt, passwordHash: await digest(password, salt), addresses: [], favourites: [],
+        name: name.trim(), email: mail, phone, salt, passwordHash: await hashPassword(password, salt), addresses: [], favourites: [],
       }));
     },
 
     async login(email, password) {
       const record = (await Store.users.list()).find((u) => u.email === normalise(email));
-      if (!record || record.passwordHash !== await digest(password, record.salt)) {
+      if (!record || record.passwordHash !== await hashPassword(password, record.salt)) {
         throw new AppError('Email or password is incorrect.');
       }
       return start(record);
@@ -54,8 +48,8 @@ const Auth = (() => {
     },
 
     async changePassword(current, next) {
-      if (user.passwordHash !== await digest(current, user.salt)) throw new AppError('Your current password is not correct.');
-      await Auth.update({ passwordHash: await digest(next, user.salt) });
+      if (user.passwordHash !== await hashPassword(current, user.salt)) throw new AppError('Your current password is not correct.');
+      await Auth.update({ passwordHash: await hashPassword(next, user.salt) });
     },
 
     async toggleFavourite(id) {

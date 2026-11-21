@@ -1,4 +1,4 @@
-const NS = 'op3:';
+const NS = 'op4:';
 
 class AppError extends Error {}
 
@@ -39,3 +39,16 @@ const loadUrduFont = (() => {
       .appendTo('head');
   };
 })();
+
+const hashPassword = async (password, salt) => {
+  if (!globalThis.crypto?.subtle) throw new AppError('Accounts need a secure page. Open the site on localhost or https.');
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', encoder.encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: encoder.encode(salt), iterations: 210000 }, key, 256);
+  return [...new Uint8Array(bits)].map((b) => b.toString(16).padStart(2, '0')).join('');
+};
+
+const sized = (url, width) => (url.startsWith('https://images.unsplash.com/') ? `${url}&w=${width}` : url);
+
+const figure = (item, className = 'dish-art', width = 640) => `
+  <figure class="${className}">${item.img ? `<img src="${esc(sized(item.img, width))}" alt="" loading="lazy" decoding="async" onerror="this.remove()">` : ''}</figure>`;

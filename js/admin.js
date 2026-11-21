@@ -1,11 +1,7 @@
-const ADMIN = { email: 'admin@own-plate.pk', password: 'ownplate2026' };
-
 const STATUS = {
   orders: ['new', 'preparing', 'ready', 'out-for-delivery', 'completed', 'cancelled'],
   reservations: ['pending', 'confirmed', 'seated', 'cancelled'],
 };
-
-const artChoices = () => Object.keys(ART).map((key) => [key, key]);
 
 const SCHEMAS = {
   menu: {
@@ -19,7 +15,7 @@ const SCHEMAS = {
       { name: 'price', label: 'Price (PKR)', type: 'number', min: 0, required: true, col: 4 },
       { name: 'kcal', label: 'Calories', type: 'number', min: 0, col: 4 },
       { name: 'tags', label: 'Tags', type: 'tags', hint: 'Comma separated, for example Spicy, Bestseller.' },
-      { name: 'img', label: 'Photo link (optional)', type: 'url', hint: 'Paste any image link from Unsplash, Pexels or your own site. Leave empty to use the built-in illustration.' },
+      { name: 'img', label: 'Photo link (optional)', type: 'url', hint: 'Paste any image link from Unsplash, Pexels or your own site. Leave empty to show no photo.' },
       { name: 'desc', label: 'Description', type: 'textarea', required: true },
       { name: 'available', label: 'Available to order', type: 'switch', col: 6 },
       { name: 'featured', label: 'Show on home page', type: 'switch', col: 6 },
@@ -27,14 +23,13 @@ const SCHEMAS = {
   },
   deals: {
     noun: 'deal',
-    defaults: { art: 'burger', active: true },
-    prepare: (data) => ({ ...data, tint: CATEGORIES.find((c) => c.art === data.art)?.tint ?? '#dfe3f0' }),
+    defaults: { img: '', active: true },
     fields: [
       { name: 'name', label: 'Deal name', required: true },
       { name: 'desc', label: 'What is included', type: 'textarea', required: true },
-      { name: 'price', label: 'Deal price (PKR)', type: 'number', min: 1, required: true, col: 4 },
-      { name: 'was', label: 'Normal price (PKR)', type: 'number', min: 1, required: true, col: 4 },
-      { name: 'art', label: 'Illustration', type: 'select', options: artChoices, col: 4 },
+      { name: 'price', label: 'Deal price (PKR)', type: 'number', min: 1, required: true, col: 6 },
+      { name: 'was', label: 'Normal price (PKR)', type: 'number', min: 1, required: true, col: 6 },
+      { name: 'img', label: 'Photo link (optional)', type: 'url' },
       { name: 'active', label: 'Active', type: 'switch' },
     ],
   },
@@ -52,10 +47,10 @@ const SCHEMAS = {
   },
   settings: {
     fields: [
-      { name: 'phone', label: 'Phone', required: true, col: 6 },
-      { name: 'email', label: 'Email', type: 'email', required: true, col: 6 },
-      { name: 'address', label: 'Main address', required: true },
-      { name: 'hours', label: 'Opening hours', required: true },
+      { name: 'phone', label: 'Phone', col: 6 },
+      { name: 'email', label: 'Email', type: 'email', col: 6 },
+      { name: 'address', label: 'Main address' },
+      { name: 'hours', label: 'Opening hours' },
       { name: 'deliveryFee', label: 'Delivery fee (PKR)', type: 'number', min: 0, col: 4 },
       { name: 'freeDeliveryOver', label: 'Free delivery over (PKR)', type: 'number', min: 0, col: 4 },
       { name: 'minOrder', label: 'Minimum delivery order (PKR)', type: 'number', min: 0, col: 4 },
@@ -101,7 +96,7 @@ const table = (columns, rows, empty) => rows.length
 
 const statusSelect = (collection, row) => `
   <select class="form-select form-select-sm status status-${row.status}" data-collection="${collection}" data-id="${row.id}" aria-label="Status">
-    ${STATUS[collection].map((s) => `<option value="${s}"${s === row.status ? ' selected' : ''}>${s.replace(/-/g, ' ')}</option>`).join('')}
+    ${STATUS[collection].filter((s) => !(row.type === 'pickup' && s === 'out-for-delivery')).map((s) => `<option value="${s}"${s === row.status ? ' selected' : ''}>${s.replace(/-/g, ' ')}</option>`).join('')}
   </select>`;
 
 const rowActions = (collection, row, label) => `
@@ -168,7 +163,7 @@ const views = {
   async menu() {
     const items = await Store.menu.list();
     return toolbar('menu', `${items.length} dishes. Changes appear on the public menu straight away.`) + table([
-      { label: 'Dish', cell: (i) => `<div class="d-flex align-items-center gap-3">${artFigure(i, 'cart-thumb')}<div><strong>${esc(i.name)}</strong>${i.urdu ? `<div class="small urdu" lang="ur" dir="rtl">${esc(i.urdu)}</div>` : ''}</div></div>` },
+      { label: 'Dish', cell: (i) => `<div class="d-flex align-items-center gap-3">${figure(i, 'cart-thumb', 160)}<div><strong>${esc(i.name)}</strong>${i.urdu ? `<div class="small urdu" lang="ur" dir="rtl">${esc(i.urdu)}</div>` : ''}</div></div>` },
       { label: 'Category', cell: (i) => esc(CATEGORIES.find((c) => c.id === i.category)?.label ?? i.category) },
       { label: 'Price', cell: (i) => money.format(i.price) },
       { label: 'Available', cell: (i) => switchCell('menu', 'available', i) },
@@ -180,7 +175,7 @@ const views = {
   async deals() {
     const deals = await Store.deals.list();
     return toolbar('deals', 'Bundles shown on the home page and the deals page.') + table([
-      { label: 'Deal', cell: (d) => `<div class="d-flex align-items-center gap-3">${artFigure(d, 'cart-thumb')}<div><strong>${esc(d.name)}</strong><div class="small text-muted">${esc(d.desc)}</div></div></div>` },
+      { label: 'Deal', cell: (d) => `<div class="d-flex align-items-center gap-3">${figure(d, 'cart-thumb', 160)}<div><strong>${esc(d.name)}</strong><div class="small text-muted">${esc(d.desc)}</div></div></div>` },
       { label: 'Price', cell: (d) => `${money.format(d.price)} <span class="was">${money.format(d.was)}</span>` },
       { label: 'Active', cell: (d) => switchCell('deals', 'active', d) },
       { label: '', cell: (d) => rowActions('deals', d, d.name) },
@@ -267,21 +262,49 @@ const openRecord = async (collection, id) => {
   recordModal.show();
 };
 
+const CREDENTIAL = `${NS}admin-credential`;
 const authed = () => sessionStorage.getItem(`${NS}admin`) === '1';
+const credential = () => {
+  try {
+    return JSON.parse(localStorage.getItem(CREDENTIAL));
+  } catch {
+    return null;
+  }
+};
+const loginError = (message) => $('#login-error').text(message).removeClass('d-none');
+
 const gate = () => {
+  const setup = !credential();
   $('#login').toggleClass('d-none', authed());
   $('#shell').toggleClass('d-none', !authed());
+  $('#login-title').text(setup ? 'Create staff account' : 'Staff sign in');
+  $('#login-hint').prop('hidden', !setup);
+  $('#confirm-group').prop('hidden', !setup).find('input').prop('required', setup);
+  $('#login-submit').text(setup ? 'Create account' : 'Sign in');
+  $('#login-password').attr('autocomplete', setup ? 'new-password' : 'current-password');
   if (authed()) route();
 };
 
-$('#login-form').on('submit', function (event) {
+$('#login-form').on('submit', async function (event) {
   event.preventDefault();
-  const { email, password } = Object.fromEntries(new FormData(this));
-  if (email === ADMIN.email && password === ADMIN.password) {
+  const { email, password, confirm } = Object.fromEntries(new FormData(this));
+  const mail = email.trim().toLowerCase();
+  const saved = credential();
+  try {
+    if (!saved) {
+      if (password.length < 10) return loginError('Use at least 10 characters for the password.');
+      if (password !== confirm) return loginError('The two passwords do not match.');
+      const salt = crypto.randomUUID?.();
+      localStorage.setItem(CREDENTIAL, JSON.stringify({ email: mail, salt, hash: await hashPassword(password, salt) }));
+    } else if (saved.email !== mail || saved.hash !== await hashPassword(password, saved.salt)) {
+      return loginError('Wrong email or password. Check the details and try again.');
+    }
+    this.reset();
+    $('#login-error').addClass('d-none');
     sessionStorage.setItem(`${NS}admin`, '1');
     gate();
-  } else {
-    $('#login-error').removeClass('d-none');
+  } catch (error) {
+    loginError(error instanceof AppError ? error.message : 'Could not sign in. Please try again.');
   }
 });
 
@@ -299,6 +322,10 @@ $('#record-form').on('submit', async function (event) {
     const existing = id ? await Store[collection].get(id) : null;
     const data = readForm(schema.fields, this);
     const record = schema.prepare ? schema.prepare(data, existing) : data;
+    if (collection === 'coupons' && (await Store.coupons.list()).some((c) => c.code === record.code && c.id !== id)) {
+      toast('That promo code already exists.');
+      return;
+    }
     await (id ? Store[collection].update(id, record) : Store[collection].create(record));
     recordModal.hide();
     toast(`${schema.noun[0].toUpperCase()}${schema.noun.slice(1)} saved`);

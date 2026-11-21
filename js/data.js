@@ -1,8 +1,9 @@
 const SETTINGS = {
-  phone: '+92 300 0000000',
-  email: 'hello@own-plate.pk',
-  address: 'Shop 12, Main Market, Your City',
-  hours: 'Daily, 11 am to 1 am',
+  phone: '',
+  email: '',
+  address: '',
+  hours: '',
+  social: { facebook: '', instagram: '', tiktok: '', whatsapp: '' },
   currency: { locale: 'en-PK', code: 'PKR' },
   deliveryFee: 150,
   freeDeliveryOver: 2500,
@@ -10,16 +11,66 @@ const SETTINGS = {
   acceptingOrders: true,
 };
 
+const BRANCHES = [];
+
+const PHOTOS = {
+  'zinger-burger': '1606149059549-6042addafc5a',
+  'classic-beef': '1571091718767-18b5b1457add',
+  'smash-burger': '1572802419224-296b0aeee0d9',
+  'bbq-beef': '1766735126781-1b2527043bf0',
+  'aloo-tikki': '1550547660-d9450f859349',
+  'fried-2pc': '1585703900468-13c7a978ad86',
+  'fried-6pc': '1426869981800-95ebf51ce900',
+  'hot-wings': '1766589221606-08bc21fa1acd',
+  'tenders': '1562967914-608f82629710',
+  'popcorn-chicken': '1586793783658-261cddf883ef',
+  'margherita': '1574071318508-1cdbab80d002',
+  'pepperoni': '1534308983496-4fabb1a015ee',
+  'tikka-pizza': '1565299624946-b28f40a0ae38',
+  'fajita-pizza': '1604382354936-07c5d9983bd3',
+  'seekh-pizza': '1628840042765-356cda07504e',
+  'veggie-pizza': '1513104890138-7c749659a591',
+  'zinger-wrap': '1626700051175-6818013e1d4f',
+  'chapli-wrap': '1529006557810-274b9b2fc783',
+  'paratha-roll': '1562059390-a761a084768e',
+  'nuggets': '1562967916-eb82221dfb92',
+  'fries': '1768215610440-fcb9631c7ee2',
+  'masala-fries': '1700835880456-2e5519fa54d6',
+  'tikka-bowl': '1778449588437-97bd47f88276',
+  'seekh-bowl': '1781332146555-5507a0fc9bc9',
+  'haleem': '1603894584373-5ac82b2ae398',
+  'mango-lassi': '1623065422902-30a2d299bbe4',
+  'orange-fizz': '1697642452436-9c40773cbcbb',
+  'double-zinger': '1607013251379-e6eecfffe234',
+  'tikka-burger': '1610440042657-612c34d95e9f',
+  'grilled-chicken': '1586190848861-99aa4a171e90',
+  'hero-main': '1568901346375-23c9450c58cd',
+  'hero-pizza': '1534308983496-4fabb1a015ee',
+  'hero-chicken': '1585703900468-13c7a978ad86',
+  'hero-fries': '1768215610440-fcb9631c7ee2',
+  'about': '1767065626922-c3928cabbe27',
+  'brownie-sundae': '1557142046-c704a3adf364',
+  'soft-serve': '1422246478030-ac94dfdc1dae',
+  'student-meal': '1767065626922-c3928cabbe27',
+  'family-feast': '1769521140317-5c6dcd1266e7',
+  'desi-lunch': '1778449588437-97bd47f88276',
+  'midnight-munch': '1562967916-eb82221dfb92',
+  'bucket-night': '1569058242253-92a9c755a0ec',
+  'pizza-party': '1613564834361-9436948817d1',
+};
+
+const photo = (key) => (PHOTOS[key] ? `https://images.unsplash.com/photo-${PHOTOS[key]}?auto=format&fit=crop&q=75` : '');
+
 const CATEGORIES = [
   { id: 'all', label: 'All' },
-  { id: 'burgers', label: 'Burgers', art: 'burger', tint: '#fbe3b0' },
-  { id: 'chicken', label: 'Fried chicken', art: 'chicken', tint: '#f7d4bd' },
-  { id: 'pizza', label: 'Pizza', art: 'pizza', tint: '#f9d2d4' },
-  { id: 'desi', label: 'Desi bowls', art: 'bowl', tint: '#dfe3f0' },
-  { id: 'wraps', label: 'Wraps & rolls', art: 'wrap', tint: '#e5e9c9' },
-  { id: 'sides', label: 'Sides', art: 'fries', tint: '#fbe9b3' },
-  { id: 'drinks', label: 'Cold drinks', art: 'cup', tint: '#d4ebe6' },
-  { id: 'desserts', label: 'Desserts', art: 'sundae', tint: '#f6dbe6' },
+  { id: 'burgers', label: 'Burgers', icon: 'bi-egg-fried', photo: 'zinger-burger' },
+  { id: 'chicken', label: 'Fried chicken', icon: 'bi-fire', photo: 'fried-2pc' },
+  { id: 'pizza', label: 'Pizza', icon: 'bi-pie-chart', photo: 'margherita' },
+  { id: 'desi', label: 'Desi bowls', icon: 'bi-bowl', photo: 'tikka-bowl' },
+  { id: 'wraps', label: 'Wraps & rolls', icon: 'bi-box', photo: 'paratha-roll' },
+  { id: 'sides', label: 'Sides', icon: 'bi-basket', photo: 'fries' },
+  { id: 'drinks', label: 'Cold drinks', icon: 'bi-cup-straw', photo: 'mango-lassi' },
+  { id: 'desserts', label: 'Desserts', icon: 'bi-cake2', photo: 'brownie-sundae' },
 ];
 
 const choice = (label, price = 0) => ({ label, price });
@@ -50,7 +101,7 @@ const OPTION_SETS = {
 
 const dish = (id, category, name, desc, price, kcal, tags, extra = {}) => ({
   id, category, name, desc, price, kcal, tags,
-  urdu: '', img: '', featured: false, available: true, optionSet: category, ...extra,
+  urdu: '', img: photo(id), featured: false, available: true, optionSet: category, ...extra,
 });
 
 const MENU = [
@@ -88,9 +139,9 @@ const MENU = [
 
   dish('fries', 'sides', 'Crispy Fries', 'Golden, salted and made to order.', 250, 360, ['Vegetarian'], { featured: true }),
   dish('masala-fries', 'sides', 'Masala Loaded Fries', 'Fries tossed in chaat masala, topped with chutney and cheese sauce.', 450, 520, ['Vegetarian']),
-  dish('nuggets', 'sides', 'Chicken Nuggets (6 pc)', 'Crispy golden nuggets with your choice of dip.', 450, 380, [], { art: 'chicken' }),
+  dish('nuggets', 'sides', 'Chicken Nuggets (6 pc)', 'Crispy golden nuggets with your choice of dip.', 450, 380, [], {}),
   dish('onion-rings', 'sides', 'Onion Rings', 'Thick-cut onion rings in a crunchy beer-style batter.', 350, 330, ['Vegetarian']),
-  dish('garlic-bread', 'sides', 'Cheesy Garlic Bread', 'Toasted garlic bread loaded with melted mozzarella.', 390, 420, ['Vegetarian'], { art: 'pizza' }),
+  dish('garlic-bread', 'sides', 'Cheesy Garlic Bread', 'Toasted garlic bread loaded with melted mozzarella.', 390, 420, ['Vegetarian'], {}),
 
   dish('cola', 'drinks', 'Cola', 'Ice-cold classic cola.', 150, 140, []),
   dish('lemon-soda', 'drinks', 'Lemon-Lime Soda', 'Crisp, citrusy and fizzy.', 150, 130, []),
@@ -100,7 +151,7 @@ const MENU = [
   dish('namkeen-lassi', 'drinks', 'Namkeen Lassi', 'Chilled salted yoghurt drink with roasted cumin and mint.', 350, 120, [], { urdu: 'نمکین لسی' }),
   dish('iced-tea', 'drinks', 'Peach Iced Tea', 'Brewed black tea, peach and lemon over ice.', 280, 90, []),
   dish('cold-coffee', 'drinks', 'Cold Coffee', 'Chilled espresso blended with milk and ice cream.', 420, 260, []),
-  dish('noon-chai', 'drinks', 'Kashmiri Noon Chai', 'Rose-pink tea with milk, cardamom and crushed pistachio. Served hot.', 390, 150, ['Hot'], { art: 'chai', optionSet: 'none' }),
+  dish('noon-chai', 'drinks', 'Kashmiri Noon Chai', 'Rose-pink tea with milk, cardamom and crushed pistachio. Served hot.', 390, 150, ['Hot'], { optionSet: 'none' }),
 
   dish('brownie-sundae', 'desserts', 'Brownie Sundae', 'Warm chocolate brownie, vanilla soft-serve and fudge sauce.', 490, 520, []),
   dish('kheer-jar', 'desserts', 'Low-Sugar Kheer Jar', 'Slow-simmered rice pudding sweetened with dates, topped with pistachio.', 450, 280, [], { urdu: 'کھیر' }),
@@ -109,13 +160,13 @@ const MENU = [
 ];
 
 const DEALS = [
-  { id: 'student-meal', name: 'Student Meal', desc: 'Zinger burger, regular fries and a cold drink.', price: 799, was: 1090, art: 'burger', tint: '#fbe3b0', active: true },
-  { id: 'family-feast', name: 'Family Feast', desc: '2 large pizzas, 12 hot wings and 4 cold drinks.', price: 4990, was: 6200, art: 'pizza', tint: '#f9d2d4', active: true },
-  { id: 'desi-lunch', name: 'Desi Lunch Box', desc: 'Chicken tikka bowl, mango lassi and a kheer jar.', price: 1590, was: 2030, art: 'bowl', tint: '#dfe3f0', active: true },
-  { id: 'midnight-munch', name: 'Midnight Munch', desc: 'Nuggets, masala fries and two cold drinks.', price: 950, was: 1250, art: 'fries', tint: '#fbe9b3', active: true },
-  { id: 'bucket-night', name: 'Bucket Night', desc: '6 pc sharing bucket, large fries and 3 cola.', price: 2290, was: 2890, art: 'chicken', tint: '#f7d4bd', active: true },
-  { id: 'pizza-party', name: 'Pizza Party', desc: '2 medium pizzas of your choice and cheesy garlic bread.', price: 2790, was: 3570, art: 'pizza', tint: '#f9d2d4', active: true },
-];
+  { id: 'student-meal', name: 'Student Meal', desc: 'Zinger burger, regular fries and a cold drink.', price: 799, was: 1090, active: true },
+  { id: 'family-feast', name: 'Family Feast', desc: '2 large pizzas, 12 hot wings and 4 cold drinks.', price: 4990, was: 6200, active: true },
+  { id: 'desi-lunch', name: 'Desi Lunch Box', desc: 'Chicken tikka bowl, mango lassi and a kheer jar.', price: 1590, was: 2030, active: true },
+  { id: 'midnight-munch', name: 'Midnight Munch', desc: 'Nuggets, masala fries and two cold drinks.', price: 950, was: 1250, active: true },
+  { id: 'bucket-night', name: 'Bucket Night', desc: '6 pc sharing bucket, large fries and 3 cola.', price: 2290, was: 2890, active: true },
+  { id: 'pizza-party', name: 'Pizza Party', desc: '2 medium pizzas of your choice and cheesy garlic bread.', price: 2790, was: 3570, active: true },
+].map((deal) => ({ ...deal, img: photo(deal.id) }));
 
 const COUPONS = [
   { id: 'cp-welcome', code: 'WELCOME10', type: 'percent', value: 10, min: 800, desc: '10% off your order over Rs 800', active: true },
