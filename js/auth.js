@@ -31,10 +31,22 @@ const Auth = (() => {
 
     async login(email, password) {
       const record = (await Store.users.list()).find((u) => u.email === normalise(email));
+      if (record?.provider === 'google' && !record.passwordHash) throw new AppError('This account uses Google. Tap Continue with Google to sign in.');
       if (!record || record.passwordHash !== await hashPassword(password, record.salt)) {
         throw new AppError('Email or password is incorrect.');
       }
       return start(record);
+    },
+
+    async google(credential, clientId) {
+      const payload = credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      const claims = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(payload), (c) => c.charCodeAt(0))));
+      if (claims.aud !== clientId || !claims.email_verified) throw new AppError('Google sign-in could not be verified. Please try again.');
+      const mail = normalise(claims.email);
+      const existing = (await Store.users.list()).find((u) => u.email === mail);
+      return start(existing ?? await Store.users.create({
+        name: claims.name ?? mail.split('@')[0], email: mail, phone: '', salt: '', passwordHash: '', provider: 'google', addresses: [], favourites: [],
+      }));
     },
 
     logout() {

@@ -28,6 +28,8 @@ const HERO_FLOATS = [
   ['hero-fries', { w: '30%', x: '62%', y: '62%', d: '.9s', t: '6.5s' }],
 ];
 
+const socialUrl = (settings, key) => (key === 'whatsapp' ? settings.whatsapp && `https://wa.me/${settings.whatsapp}` : settings.social?.[key]);
+
 const SOCIAL = [['facebook', 'bi-facebook', 'Facebook'], ['instagram', 'bi-instagram', 'Instagram'], ['tiktok', 'bi-tiktok', 'TikTok'], ['whatsapp', 'bi-whatsapp', 'WhatsApp']];
 
 const Motion = (() => {
@@ -131,6 +133,46 @@ const syncCart = async () => {
   if (fresh.length < current.length) toast('Some items are no longer available and were removed from your order.');
 };
 
+const whatsappUrl = (order, number) => {
+  const lines = order.items.map((l) => `- ${l.qty} x ${l.name}${l.options.length ? ` (${l.options.join(', ')})` : ''}: ${money.format(l.price * l.qty)}`);
+  const text = [
+    `New order ${shortId(order.id)}`,
+    `Name: ${order.name}`,
+    `Phone: ${order.phone}`,
+    order.type === 'delivery' ? `Delivery to: ${order.address}` : 'Pickup at the counter',
+    '',
+    ...lines,
+    '',
+    order.discount ? `Discount: -${money.format(order.discount)}` : null,
+    order.fee ? `Delivery fee: ${money.format(order.fee)}` : null,
+    `Total: ${money.format(order.total)} (cash)`,
+    order.notes ? `Notes: ${order.notes}` : null,
+  ].filter((line) => line !== null).join('\n');
+  return `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
+};
+
+const initGoogleSignIn = () => {
+  const { googleClientId } = Store.settings.get();
+  if (!googleClientId) return;
+  const script = Object.assign(document.createElement('script'), { src: 'https://accounts.google.com/gsi/client', async: true });
+  script.onload = () => {
+    google.accounts.id.initialize({
+      client_id: googleClientId,
+      callback: async ({ credential }) => {
+        try {
+          await Auth.google(credential, googleClientId);
+          location.href = nextUrl() ?? 'account.html';
+        } catch (error) {
+          toast(error instanceof AppError ? error.message : 'Google sign-in failed. Please try again.');
+        }
+      },
+    });
+    google.accounts.id.renderButton($('#google-button')[0], { theme: 'outline', size: 'large', shape: 'pill', text: 'continue_with', width: 320 });
+    $('#google-auth').prop('hidden', false);
+  };
+  document.head.append(script);
+};
+
 const nextUrl = () => {
   const next = new URLSearchParams(location.search).get('next') ?? '';
   return /^[\w-]+\.html(#[\w-]*)?$/.test(next) ? next : null;
@@ -175,7 +217,7 @@ const renderLayout = () => {
   const user = Auth.user();
   const settings = Store.settings.get();
   const { acceptingOrders, freeDeliveryOver } = settings;
-  const links = NAV.map(([href, label]) => {
+  const links = NAV.filter(([href]) => !(settings.whatsapp && href === 'track.html')).map(([href, label]) => {
     const current = href.replace(/\.html$/, '') === here;
     return `<li class="nav-item"><a class="nav-link${current ? ' active' : ''}" href="${href}"${current ? ' aria-current="page"' : ''}>${label}</a></li>`;
   }).join('');
@@ -193,8 +235,8 @@ const renderLayout = () => {
             <a class="navbar-brand brand" href="index.html">Own<span>-</span>Plate</a>
             <div class="d-flex align-items-center gap-2 ms-auto ms-lg-0 order-lg-last">
               ${user
-                ? `<a class="btn-icon" href="account.html" aria-label="My account (${esc(user.name)})"><i class="bi bi-person-check" aria-hidden="true"></i></a>`
-                : '<a class="btn btn-outline-indigo btn-sm" href="login.html">Sign in</a>'}
+        ? `<a class="btn-icon" href="account.html" aria-label="My account (${esc(user.name)})"><i class="bi bi-person-check" aria-hidden="true"></i></a>`
+        : '<a class="btn btn-outline-indigo btn-sm" href="login.html">Sign in</a>'}
               <button type="button" class="btn-icon" data-bs-toggle="offcanvas" data-bs-target="#cart" aria-label="Open your order">
                 <i class="bi bi-bag" aria-hidden="true"></i><span id="cart-count" class="cart-count">0</span>
               </button>
@@ -227,11 +269,11 @@ const renderLayout = () => {
             <div class="col-lg-4">
               <a class="brand fs-3" href="index.html">Own<span>-</span>Plate</a>
               <p class="mt-2">Burgers, pizza and desi favourites, cooked to order and sold direct. Halal, always.</p>
-              <div class="social">${SOCIAL.filter(([key]) => settings.social?.[key]).map(([key, icon, label]) => `<a href="${esc(settings.social[key])}" target="_blank" rel="noopener" aria-label="${label}"><i class="bi ${icon}"></i></a>`).join('')}</div>
+              <div class="social">${SOCIAL.filter(([key]) => socialUrl(settings, key)).map(([key, icon, label]) => `<a href="${esc(socialUrl(settings, key))}" target="_blank" rel="noopener" aria-label="${label}"><i class="bi ${icon}"></i></a>`).join('')}</div>
             </div>
             <div class="col-6 col-lg-2"><h2>Menu</h2>${footerLinks(CATEGORIES.slice(1, 7).map((c) => [`menu.html#${c.id}`, c.label]))}</div>
             <div class="col-6 col-lg-2"><h2>Company</h2>${footerLinks([['about.html', 'Our story'], ['locations.html', 'Locations'], ['contact.html', 'Contact'], ['faq.html', 'FAQ']])}</div>
-            <div class="col-6 col-lg-2"><h2>Account</h2>${footerLinks([['login.html', 'Sign in'], ['signup.html', 'Create account'], ['track.html', 'Track order'], ['terms.html', 'Terms'], ['privacy.html', 'Privacy']])}</div>
+            <div class="col-6 col-lg-2"><h2>Account</h2>${footerLinks([['login.html', 'Sign in'], ['signup.html', 'Create account'], ...(settings.whatsapp ? [] : [['track.html', 'Track order']]), ['terms.html', 'Terms'], ['privacy.html', 'Privacy']])}</div>
             <div class="col-6 col-lg-2 footer-contact"><h2>Say hello</h2><ul><li><a data-tel data-setting="phone"></a></li><li><a data-mail data-setting="email"></a></li><li data-setting="hours"></li></ul></div>
           </div>
           <hr class="border-light opacity-25 my-4">
@@ -402,7 +444,7 @@ const bindGlobalHandlers = () => {
       $(document).trigger('favourites:change');
     })
     .on('click', '[data-copy]', async function () {
-      await navigator.clipboard?.writeText(this.dataset.copy).catch(() => {});
+      await navigator.clipboard?.writeText(this.dataset.copy).catch(() => { });
       toast(`${this.dataset.copy} copied`);
     })
     .on('click', '[data-toggle-password]', function () {
@@ -429,7 +471,7 @@ const orderCard = (order) => `
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
       <strong>${money.format(order.total)}</strong>
       <span class="d-flex gap-2">
-        <a class="btn btn-sm btn-outline-indigo" href="track.html?id=${order.id}">Track</a>
+        ${Store.settings.get().whatsapp ? '' : `<a class="btn btn-sm btn-outline-indigo" href="track.html?id=${order.id}">Track</a>`}
         <button type="button" class="btn btn-sm btn-clay" data-reorder="${order.id}">Reorder</button>
       </span>
     </div>
@@ -587,6 +629,7 @@ const pages = {
     bindForm('#checkout-form', async ({ name, phone, address, notes }) => {
       if (!canOrder() || !Cart.count() || shortfall()) return;
       const orderType = type();
+      const { whatsapp } = Store.settings.get();
       const order = await Store.orders.create({
         name: name.trim(), phone, type: orderType, address: orderType === 'delivery' ? address.trim() : '', notes: notes.trim(),
         payment: 'cash', items: Cart.lines(), ...quote(), coupon: state.coupon?.code ?? null,
@@ -597,9 +640,13 @@ const pages = {
         <div class="confirmation">
           <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
           <h1 class="h2 mt-3">Shukriya, ${esc(name.split(' ')[0])}!</h1>
-          <p>Order <strong>${shortId(order.id)}</strong> is with the kitchen. Pay ${money.format(order.total)} in cash when it arrives.</p>
+          ${whatsapp
+          ? `<p>Order <strong>${shortId(order.id)}</strong> is ready. Tap the button to send it to our kitchen on WhatsApp. It is confirmed once we receive the message. Pay ${money.format(order.total)} in cash.</p>`
+          : `<p>Order <strong>${shortId(order.id)}</strong> is with the kitchen. Pay ${money.format(order.total)} in cash when it arrives.</p>`}
           <div class="d-flex flex-wrap justify-content-center gap-2">
-            <a class="btn btn-clay" href="track.html?id=${order.id}">Track my order</a>
+            ${whatsapp
+          ? `<a class="btn btn-whatsapp" href="${esc(whatsappUrl(order, whatsapp))}" target="_blank" rel="noopener"><i class="bi bi-whatsapp" aria-hidden="true"></i> Send order on WhatsApp</a>`
+          : `<a class="btn btn-clay" href="track.html?id=${order.id}">Track my order</a>`}
             <a class="btn btn-outline-indigo" href="menu.html">Order more</a>
           </div>
           ${user ? '' : '<p class="small text-muted mt-4">Want faster checkout next time? <a href="signup.html">Create an account</a>.</p>'}
@@ -671,6 +718,7 @@ const pages = {
 
   login() {
     if (Auth.user()) return location.replace('account.html');
+    initGoogleSignIn();
     bindForm('#login-form', async ({ email, password }) => {
       await Auth.login(email, password);
       location.href = nextUrl() ?? 'account.html';
@@ -678,6 +726,7 @@ const pages = {
   },
 
   signup() {
+    initGoogleSignIn();
     if (Auth.user()) return location.replace('account.html');
     $('#password').on('input', function () {
       const score = [/.{8,}/, /[A-Z]/, /[a-z]/, /\d/, /[^A-Za-z0-9]/].filter((rule) => rule.test(this.value)).length;
@@ -770,11 +819,11 @@ const pages = {
               <div class="col-12"><button class="btn btn-clay" type="submit">Save changes</button></div>
             </div>
           </form>
-          <form id="password-form" class="panel-card" novalidate>
+          ${user.passwordHash ? `<form id="password-form" class="panel-card" novalidate>
             <h3 class="h6">Change password</h3>
             <div class="row g-3"><div class="col-md-6">${passwordInput('current', 'Current password', 'current-password')}</div><div class="col-md-6">${passwordInput('next', 'New password', 'new-password')}</div>
               <div class="col-12"><button class="btn btn-outline-indigo" type="submit">Update password</button></div></div>
-          </form>
+          </form>` : ''}
           <div class="panel-card d-flex flex-wrap gap-2">
             <button type="button" class="btn btn-outline-indigo" id="signout">Sign out</button>
             <button type="button" class="btn btn-outline-danger" id="delete-account">Delete my account</button>

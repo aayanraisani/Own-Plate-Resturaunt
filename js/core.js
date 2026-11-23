@@ -1,6 +1,6 @@
 const NS = 'op4:';
 
-class AppError extends Error {}
+class AppError extends Error { }
 
 const money = new Intl.NumberFormat(SETTINGS.currency.locale, {
   style: 'currency',
